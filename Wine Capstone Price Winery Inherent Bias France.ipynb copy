@@ -1,0 +1,571 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import seaborn as sns\n",
+    "import matplotlib.pyplot as plt\n",
+    "from sklearn.linear_model import LinearRegression\n",
+    "from sklearn import metrics\n",
+    "from sklearn.preprocessing import StandardScaler\n",
+    "from sklearn.metrics import mean_squared_error\n",
+    "from math import sqrt\n",
+    "from sklearn.model_selection import train_test_split\n",
+    "from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer\n",
+    "from sklearn.naive_bayes import MultinomialNB         # Naive Bayes\n",
+    "from sklearn.linear_model import LogisticRegression\n",
+    "from textblob import TextBlob, Word\n",
+    "from nltk.stem.snowball import SnowballStemmer\n",
+    "pd.set_option('display.max_columns', 500)\n",
+    "pd.set_option('display.max_rows', 500)\n",
+    "pd.set_option('max_colwidth', 500)\n",
+    "\n",
+    "\n",
+    "%matplotlib inline"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train= pd.read_csv('./winemag-data-130k-v2-copy.csv')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Unnamed: 0    0.007124\n",
+       "points        1.000000\n",
+       "price         0.416167\n",
+       "Name: points, dtype: float64"
+      ]
+     },
+     "execution_count": 4,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "train.corr()['points']"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 97,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train['log_price'] = np.log(train['price'])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 98,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "france_wine=train[(train.country == 'France')]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 99,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Unnamed: 0</th>\n",
+       "      <th>country</th>\n",
+       "      <th>description</th>\n",
+       "      <th>designation</th>\n",
+       "      <th>points</th>\n",
+       "      <th>price</th>\n",
+       "      <th>province</th>\n",
+       "      <th>region_1</th>\n",
+       "      <th>region_2</th>\n",
+       "      <th>taster_name</th>\n",
+       "      <th>taster_twitter_handle</th>\n",
+       "      <th>title</th>\n",
+       "      <th>variety</th>\n",
+       "      <th>winery</th>\n",
+       "      <th>log_price</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>7</th>\n",
+       "      <td>7</td>\n",
+       "      <td>France</td>\n",
+       "      <td>This dry and restrained wine offers spice in profusion. Balanced with acidity and a firm texture, it's very much for food.</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>87</td>\n",
+       "      <td>24.0</td>\n",
+       "      <td>Alsace</td>\n",
+       "      <td>Alsace</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Roger Voss</td>\n",
+       "      <td>@vossroger</td>\n",
+       "      <td>Trimbach 2012 Gewurztraminer (Alsace)</td>\n",
+       "      <td>Gewürztraminer</td>\n",
+       "      <td>Trimbach</td>\n",
+       "      <td>3.178054</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>9</th>\n",
+       "      <td>9</td>\n",
+       "      <td>France</td>\n",
+       "      <td>This has great depth of flavor with its fresh apple and pear fruits and touch of spice. It's off dry while balanced with acidity and a crisp texture. Drink now.</td>\n",
+       "      <td>Les Natures</td>\n",
+       "      <td>87</td>\n",
+       "      <td>27.0</td>\n",
+       "      <td>Alsace</td>\n",
+       "      <td>Alsace</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Roger Voss</td>\n",
+       "      <td>@vossroger</td>\n",
+       "      <td>Jean-Baptiste Adam 2012 Les Natures Pinot Gris (Alsace)</td>\n",
+       "      <td>Pinot Gris</td>\n",
+       "      <td>Jean-Baptiste Adam</td>\n",
+       "      <td>3.295837</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>11</th>\n",
+       "      <td>11</td>\n",
+       "      <td>France</td>\n",
+       "      <td>This is a dry wine, very spicy, with a tight, taut texture and strongly mineral character layered with citrus as well as pepper. It's a food wine with its almost crisp aftertaste.</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>87</td>\n",
+       "      <td>30.0</td>\n",
+       "      <td>Alsace</td>\n",
+       "      <td>Alsace</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Roger Voss</td>\n",
+       "      <td>@vossroger</td>\n",
+       "      <td>Leon Beyer 2012 Gewurztraminer (Alsace)</td>\n",
+       "      <td>Gewürztraminer</td>\n",
+       "      <td>Leon Beyer</td>\n",
+       "      <td>3.401197</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>30</th>\n",
+       "      <td>30</td>\n",
+       "      <td>France</td>\n",
+       "      <td>Red cherry fruit comes laced with light tannins, giving this bright wine an open, juicy character.</td>\n",
+       "      <td>Nouveau</td>\n",
+       "      <td>86</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Beaujolais</td>\n",
+       "      <td>Beaujolais-Villages</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Roger Voss</td>\n",
+       "      <td>@vossroger</td>\n",
+       "      <td>Domaine de la Madone 2012 Nouveau  (Beaujolais-Villages)</td>\n",
+       "      <td>Gamay</td>\n",
+       "      <td>Domaine de la Madone</td>\n",
+       "      <td>NaN</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>42</th>\n",
+       "      <td>42</td>\n",
+       "      <td>France</td>\n",
+       "      <td>This is a festive wine, with soft, ripe fruit and acidity, plus a red berry flavor.</td>\n",
+       "      <td>Nouveau</td>\n",
+       "      <td>86</td>\n",
+       "      <td>9.0</td>\n",
+       "      <td>Beaujolais</td>\n",
+       "      <td>Beaujolais</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Roger Voss</td>\n",
+       "      <td>@vossroger</td>\n",
+       "      <td>Henry Fessy 2012 Nouveau  (Beaujolais)</td>\n",
+       "      <td>Gamay</td>\n",
+       "      <td>Henry Fessy</td>\n",
+       "      <td>2.197225</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "    Unnamed: 0 country  \\\n",
+       "7            7  France   \n",
+       "9            9  France   \n",
+       "11          11  France   \n",
+       "30          30  France   \n",
+       "42          42  France   \n",
+       "\n",
+       "                                                                                                                                                                            description  \\\n",
+       "7                                                            This dry and restrained wine offers spice in profusion. Balanced with acidity and a firm texture, it's very much for food.   \n",
+       "9                      This has great depth of flavor with its fresh apple and pear fruits and touch of spice. It's off dry while balanced with acidity and a crisp texture. Drink now.   \n",
+       "11  This is a dry wine, very spicy, with a tight, taut texture and strongly mineral character layered with citrus as well as pepper. It's a food wine with its almost crisp aftertaste.   \n",
+       "30                                                                                   Red cherry fruit comes laced with light tannins, giving this bright wine an open, juicy character.   \n",
+       "42                                                                                                  This is a festive wine, with soft, ripe fruit and acidity, plus a red berry flavor.   \n",
+       "\n",
+       "    designation  points  price    province             region_1 region_2  \\\n",
+       "7           NaN      87   24.0      Alsace               Alsace      NaN   \n",
+       "9   Les Natures      87   27.0      Alsace               Alsace      NaN   \n",
+       "11          NaN      87   30.0      Alsace               Alsace      NaN   \n",
+       "30      Nouveau      86    NaN  Beaujolais  Beaujolais-Villages      NaN   \n",
+       "42      Nouveau      86    9.0  Beaujolais           Beaujolais      NaN   \n",
+       "\n",
+       "   taster_name taster_twitter_handle  \\\n",
+       "7   Roger Voss            @vossroger   \n",
+       "9   Roger Voss            @vossroger   \n",
+       "11  Roger Voss            @vossroger   \n",
+       "30  Roger Voss            @vossroger   \n",
+       "42  Roger Voss            @vossroger   \n",
+       "\n",
+       "                                                       title         variety  \\\n",
+       "7                      Trimbach 2012 Gewurztraminer (Alsace)  Gewürztraminer   \n",
+       "9    Jean-Baptiste Adam 2012 Les Natures Pinot Gris (Alsace)      Pinot Gris   \n",
+       "11                   Leon Beyer 2012 Gewurztraminer (Alsace)  Gewürztraminer   \n",
+       "30  Domaine de la Madone 2012 Nouveau  (Beaujolais-Villages)           Gamay   \n",
+       "42                    Henry Fessy 2012 Nouveau  (Beaujolais)           Gamay   \n",
+       "\n",
+       "                  winery  log_price  \n",
+       "7               Trimbach   3.178054  \n",
+       "9     Jean-Baptiste Adam   3.295837  \n",
+       "11            Leon Beyer   3.401197  \n",
+       "30  Domaine de la Madone        NaN  \n",
+       "42           Henry Fessy   2.197225  "
+      ]
+     },
+     "execution_count": 99,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "france_wine.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 100,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Unnamed: 0                   0\n",
+       "country                      0\n",
+       "description                  0\n",
+       "designation               7563\n",
+       "points                       0\n",
+       "price                     4317\n",
+       "province                     0\n",
+       "region_1                    76\n",
+       "region_2                 22093\n",
+       "taster_name                265\n",
+       "taster_twitter_handle      265\n",
+       "title                        0\n",
+       "variety                      0\n",
+       "winery                       0\n",
+       "log_price                 4317\n",
+       "dtype: int64"
+      ]
+     },
+     "execution_count": 100,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "france_wine.isna().sum()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 74,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/AceJohnson/anaconda3/lib/python3.7/site-packages/ipykernel_launcher.py:7: SettingWithCopyWarning: \n",
+      "A value is trying to be set on a copy of a slice from a DataFrame.\n",
+      "Try using .loc[row_indexer,col_indexer] = value instead\n",
+      "\n",
+      "See the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy\n",
+      "  import sys\n"
+     ]
+    }
+   ],
+   "source": [
+    "winery = list(france_wine.winery.value_counts()[:22387].index)\n",
+    "def winery_to_simple(x,winery):\n",
+    "    if x in winery:\n",
+    "        return x\n",
+    "    else: \n",
+    "        return 'Other'\n",
+    "france_wine['winery_simple'] = fra,nce_wine.winery.apply(lambda x: winery_to_simple(x,winery))\n",
+    "dummy_winery = pd.get_dummies(france_wine.winery_simple,prefix = 'winery_')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 75,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "france_wine_one = france_wine[['log_price','points']]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 77,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "log_price    4317\n",
+       "points          0\n",
+       "dtype: int64"
+      ]
+     },
+     "execution_count": 77,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "france_wine_one.isna().sum()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 78,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/AceJohnson/anaconda3/lib/python3.7/site-packages/ipykernel_launcher.py:1: SettingWithCopyWarning: \n",
+      "A value is trying to be set on a copy of a slice from a DataFrame\n",
+      "\n",
+      "See the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy\n",
+      "  \"\"\"Entry point for launching an IPython kernel.\n"
+     ]
+    }
+   ],
+   "source": [
+    "france_wine_one.dropna(inplace=True)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 79,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "log_price    0\n",
+       "points       0\n",
+       "dtype: int64"
+      ]
+     },
+     "execution_count": 79,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "france_wine_one.isna().sum()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 80,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "wine_model=pd.concat([france_wine_one,dummy_winery],axis=1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 81,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "features = [x for x in wine_model.columns if x != ('points')]\n",
+    "\n",
+    "X=wine_model[features]\n",
+    "y=wine_model['points']\n",
+    "\n",
+    "X_train,X_test,y_train,y_test = train_test_split(X,y, random_state = 42)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 82,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/AceJohnson/anaconda3/lib/python3.7/site-packages/sklearn/preprocessing/data.py:645: DataConversionWarning: Data with input dtype uint8, float64 were all converted to float64 by StandardScaler.\n",
+      "  return self.partial_fit(X, y)\n",
+      "/Users/AceJohnson/anaconda3/lib/python3.7/site-packages/sklearn/base.py:464: DataConversionWarning: Data with input dtype uint8, float64 were all converted to float64 by StandardScaler.\n",
+      "  return self.fit(X, **fit_params).transform(X)\n",
+      "/Users/AceJohnson/anaconda3/lib/python3.7/site-packages/ipykernel_launcher.py:7: DataConversionWarning: Data with input dtype uint8, float64 were all converted to float64 by StandardScaler.\n",
+      "  import sys\n"
+     ]
+    },
+    {
+     "ename": "ValueError",
+     "evalue": "Input contains NaN, infinity or a value too large for dtype('float64').",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mValueError\u001b[0m                                Traceback (most recent call last)",
+      "\u001b[0;32m<ipython-input-82-522cc2aa9b8b>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m\u001b[0m\n\u001b[1;32m     12\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     13\u001b[0m     \u001b[0;31m# Fit the model.\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---> 14\u001b[0;31m     \u001b[0mridgereg\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mfit\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mX_train\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0my_train\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     15\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     16\u001b[0m     \u001b[0;31m# Predict with fitted model.\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/anaconda3/lib/python3.7/site-packages/sklearn/linear_model/ridge.py\u001b[0m in \u001b[0;36mfit\u001b[0;34m(self, X, y, sample_weight)\u001b[0m\n\u001b[1;32m    678\u001b[0m         \u001b[0mself\u001b[0m \u001b[0;34m:\u001b[0m \u001b[0mreturns\u001b[0m \u001b[0man\u001b[0m \u001b[0minstance\u001b[0m \u001b[0mof\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    679\u001b[0m         \"\"\"\n\u001b[0;32m--> 680\u001b[0;31m         \u001b[0;32mreturn\u001b[0m \u001b[0msuper\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mRidge\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mfit\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mX\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0my\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0msample_weight\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0msample_weight\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    681\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    682\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/anaconda3/lib/python3.7/site-packages/sklearn/linear_model/ridge.py\u001b[0m in \u001b[0;36mfit\u001b[0;34m(self, X, y, sample_weight)\u001b[0m\n\u001b[1;32m    489\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    490\u001b[0m         X, y = check_X_y(X, y, ['csr', 'csc', 'coo'], dtype=_dtype,\n\u001b[0;32m--> 491\u001b[0;31m                          multi_output=True, y_numeric=True)\n\u001b[0m\u001b[1;32m    492\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    493\u001b[0m         if ((sample_weight is not None) and\n",
+      "\u001b[0;32m~/anaconda3/lib/python3.7/site-packages/sklearn/utils/validation.py\u001b[0m in \u001b[0;36mcheck_X_y\u001b[0;34m(X, y, accept_sparse, accept_large_sparse, dtype, order, copy, force_all_finite, ensure_2d, allow_nd, multi_output, ensure_min_samples, ensure_min_features, y_numeric, warn_on_dtype, estimator)\u001b[0m\n\u001b[1;32m    754\u001b[0m                     \u001b[0mensure_min_features\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mensure_min_features\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    755\u001b[0m                     \u001b[0mwarn_on_dtype\u001b[0m\u001b[0;34m=\u001b[0m\u001b[0mwarn_on_dtype\u001b[0m\u001b[0;34m,\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 756\u001b[0;31m                     estimator=estimator)\n\u001b[0m\u001b[1;32m    757\u001b[0m     \u001b[0;32mif\u001b[0m \u001b[0mmulti_output\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    758\u001b[0m         y = check_array(y, 'csr', force_all_finite=True, ensure_2d=False,\n",
+      "\u001b[0;32m~/anaconda3/lib/python3.7/site-packages/sklearn/utils/validation.py\u001b[0m in \u001b[0;36mcheck_array\u001b[0;34m(array, accept_sparse, accept_large_sparse, dtype, order, copy, force_all_finite, ensure_2d, allow_nd, ensure_min_samples, ensure_min_features, warn_on_dtype, estimator)\u001b[0m\n\u001b[1;32m    571\u001b[0m         \u001b[0;32mif\u001b[0m \u001b[0mforce_all_finite\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    572\u001b[0m             _assert_all_finite(array,\n\u001b[0;32m--> 573\u001b[0;31m                                allow_nan=force_all_finite == 'allow-nan')\n\u001b[0m\u001b[1;32m    574\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    575\u001b[0m     \u001b[0mshape_repr\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0m_shape_repr\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0marray\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mshape\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;32m~/anaconda3/lib/python3.7/site-packages/sklearn/utils/validation.py\u001b[0m in \u001b[0;36m_assert_all_finite\u001b[0;34m(X, allow_nan)\u001b[0m\n\u001b[1;32m     54\u001b[0m                 not allow_nan and not np.isfinite(X).all()):\n\u001b[1;32m     55\u001b[0m             \u001b[0mtype_err\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0;34m'infinity'\u001b[0m \u001b[0;32mif\u001b[0m \u001b[0mallow_nan\u001b[0m \u001b[0;32melse\u001b[0m \u001b[0;34m'NaN, infinity'\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---> 56\u001b[0;31m             \u001b[0;32mraise\u001b[0m \u001b[0mValueError\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mmsg_err\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mformat\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mtype_err\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mX\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mdtype\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     57\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     58\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;31mValueError\u001b[0m: Input contains NaN, infinity or a value too large for dtype('float64')."
+     ]
+    }
+   ],
+   "source": [
+    "from sklearn.linear_model import Ridge\n",
+    "\n",
+    "for alpha in range(10):\n",
+    "    alpha=alpha/10\n",
+    "    scaler = StandardScaler()\n",
+    "    X_train = scaler.fit_transform(X_train)\n",
+    "    X_test = scaler.transform(X_test)\n",
+    "\n",
+    "    # Instantiate the model.\n",
+    "    #(Alpha of zero has no regularization strength, essentially a basic linear regression.)\n",
+    "    ridgereg = Ridge(alpha=alpha, normalize=True)\n",
+    "\n",
+    "    # Fit the model.\n",
+    "    ridgereg.fit(X_train, y_train)\n",
+    "\n",
+    "    # Predict with fitted model.\n",
+    "    predictions = ridgereg.predict(X_test)\n",
+    "    #print(np.sqrt(metrics.mean_squared_error(y_test, y_pred)))\n",
+    "    score = ridgereg.score(X_train,y_train)\n",
+    "    print(alpha,score)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.3"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
